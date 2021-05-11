@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head><meta name="generator" content="Hexo 3.9.0">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CareyWong's backyard</title>
+    <!-- 引入配置文件 -->
+    <link rel="stylesheet" href="/css/main.css">
+    <!-- 代码高亮库 -->
+    <link rel="stylesheet" href="/js/highlight/styles/github-gist.css">
+    <!-- 插入favicon -->
+    <link rel="shortcut icon" href="/images/favicon.ico">
+    <!-- 引入字体 -->
+    <link rel="stylesheet" href="/css/font.css">
+    <!-- 引入animate.css -->
+    <link rel="stylesheet" href="https://cdn.bootcss.com/animate.css/3.7.2/animate.min.css">
+</head>
+
+<body id="animated body">
+    <div id="bg-cover"></div>
+    <div id="bg-cover-up"></div>
+
+    <!-- 引入导航 -->
+    <header id="header">
+        <div id="header-container">
+            <div class="header__left animated">
+    <a href="https://www.whiscc.com">
+        <img src="/images/logo.png" alt="logo" class="logo">
+        <h1 class="title">CareyWong's backyard</h1>
+    </a>
+</div>
+
+<nav class="header__right">
+
+
+    <div class="web">
+        <!-- 内部页面 -->
+        
+        <li id="menu">
+            <a href="/" class="menu-item">主页</a>
+        </li>
+        
+        <li id="menu">
+            <a href="/archives" class="menu-item">归档</a>
+        </li>
+        
+        <li id="menu">
+            <a href="/about" class="menu-item">关于我</a>
+        </li>
+        
+        <!-- RSS 链接 -->
+        <a href="https://www.whiscc.com/atom.xml" target="_blank">
+            <img src="/images/rss.png" alt="rss" class="rss">
+        </a>
+    </div>
+
+</nav>
+
+
+        </div>
+    </header>
+
+    <div class="mobile">
+        <div class="icon-box-60px" id="slider-icon">
+            <img src="/images/more.png" alt="more-icon" class="icon-30px">
+        </div>
+    </div>
+
+
+    <div id="main">
+        <!-- 引入内容 -->
+        <div id="center">
+            <div id="content">
+                <div id="post-container">
+    <div id="post">
+        
+        
+        
+        <div class="post-title">
+            MySQL 主从原理、读写分离及实现
+        </div>
+        <div class="post-info">
+            <span>2019-07-10</span> ·
+            <span>CareyWong</span>
+        </div>
+        <div class="post-line"></div>
+    </div>
+
+    <div id="article">
+        <p>&emsp;&emsp;MySQL最重要的功能之一。指一台服务器充当主数据库服务器，另一台或多台服务器充当从数据库服务器，主服务器中的数据自动复制到从服务器之中。</p>
+<h1 id="主从作用"><a href="#主从作用" class="headerlink" title="主从作用"></a>主从作用</h1><ul>
+<li>数据备份。</li>
+<li>高可用性（负载均衡，容灾）。</li>
+<li>在MySQL主从复制架构中，读操作可以在所有的服务器上面进行，而写操作只能在主服务器上面进行，给读操作提供了扩展。</li>
+</ul>
+<h1 id="工作原理"><a href="#工作原理" class="headerlink" title="工作原理"></a>工作原理</h1><p>方式：基于日志与基于GTID全局事务标志符，这里主要介绍第一种。</p>
+<ul>
+<li>基础是主服务器对数据库修改记录二进制日志(以下简称 binlog)，从服务器通过主服务器的二进制日志自动执行更新。</li>
+<li>主服务器上面的任何修改都会保存在 binlog (mysql- bin.xxxxxx)里面。</li>
+<li>从服务器上面启动一个 I/O 线程（实际上就是一个主服务器的客户端进程），连接到主服务器读取指定 binlog 指定位置之后信息，然后返回给 slave 的 I/O 线程。返回的信息中除了 binlog 内容外，还有本次返回日志内容后在 master 服务器端的新的 binlog 文件名称以及在 binlog 中的下一个指定更新位置。</li>
+<li>当 slave 服务器的 I/O 线程获取到来自 master 服务器上 I/O 线程发送日志内容以及日志文件以及位置点后，将 binlog 内容一次写入到 slave 端自身的 relaylog (中继日志)文件(mysql-relay-bin.xxxxxx)的末尾，并将新的 binlog 文件名和位置记录到 master-info 文件中，以便下次读取 master 端新 binlog 日志时，能够告诉 master 服务器需要从新 binlog 日志的哪个文件哪个位置开始请求新的 binlog 内容。</li>
+<li>slave 服务器的 SQL 线程会实时的检测本地 relaylog 中新增加的日志内容，然后及时的把 relaylog 文件中的内容解析成在 master 端曾经执行的 SQL 语句的内容，并在自身按语句的顺序执行应用这些 SQL 语句，应用完毕后清理用过的日志。</li>
+<li>当复制状态正常的情况下，在 master 和 slave 执行了同样的SQL语句，主从的数据是完全一样的。</li>
+<li>在老版本的 MySQL 主从复制中 slave 端并不是两个进程完成的，而是由一个进程完成。复制 binlog 和解析日志并在自身执行的过程成为一个串行的过程，性能受到了一定的限制，异步复制的延迟也会比较长。</li>
+</ul>
+<h1 id="主从复制模式"><a href="#主从复制模式" class="headerlink" title="主从复制模式"></a>主从复制模式</h1><ul>
+<li>异步模式<ul>
+<li>MySQL 默认的复制是异步模式，主库在执行完客户端提交的事务后会立即将结果返给给客户端，并不关心从库是否已接收并处理。</li>
+</ul>
+</li>
+<li>同步模式<ul>
+<li>主库执行完一个事务，所有的从库都执行了该事务才返回给客户端。</li>
+<li>由于需要等待所有从库执行完事务，性能会受到极大影响。</li>
+</ul>
+</li>
+<li>半同步模式<ul>
+<li>主库在执行完客户端提交的事务后不是立刻返回给客户端，而是等待至少一个从库接收到并写到 relaylog 中才返回给客户端。</li>
+<li>相对于异步复制，半同步复制提高了数据的安全性，同时它也造成了一定程度的延迟。</li>
+</ul>
+</li>
+</ul>
+<h1 id="主从复制类型"><a href="#主从复制类型" class="headerlink" title="主从复制类型"></a>主从复制类型</h1><ul>
+<li>基于语句的复制(STATEMENT)<ul>
+<li>MySQL 默认使用基于语句的复制。</li>
+<li>主服务器上面执行的语句在从服务器上面再执行一遍。</li>
+<li>存在的问题：时间上可能不完全同步造成偏差，执行语句的用户也可能是不同一个用户。</li>
+<li>使用 MySQL 的功能相对少（存储过程、触发器、函数），选择基于语句的复制。</li>
+</ul>
+</li>
+<li>混合类型的复制(MIXED)<ul>
+<li>当基于语句的复制会引发问题的时候就会使用基于行的复制，MySQL会自动进行选择。</li>
+<li>使用MySQL的特殊功能（存储过程、触发器、函数），选择混合类型的复制。</li>
+</ul>
+</li>
+<li>基于行的复制(ROW)</li>
+<li>把主服务器上面更新后的内容直接复制过去，而不关心到底改变该内容是由哪条语句引发的。</li>
+<li>存在的问题：表t有10000行数据，某字段+100，基于行的复制需制10000行的内容，开销较大；基于语句的复制只需要一条语句就可以了。</li>
+<li>使用 MySQL 的特殊功能（存储过程、触发器、函数）又希望数据最大化一致，选择基于行的复制。</li>
+</ul>
+<h1 id="MySQL的复制过滤-Replication-Filters"><a href="#MySQL的复制过滤-Replication-Filters" class="headerlink" title="MySQL的复制过滤(Replication Filters)"></a>MySQL的复制过滤(Replication Filters)</h1><p>主要用途：复制特定的数据表或库到从库</p>
+<ul>
+<li>在 master 上过滤二进制日志中的事件。</li>
+<li>在 slave 上过滤中继日志中的事件。</li>
+</ul>
+<h1 id="主从复制优化方案"><a href="#主从复制优化方案" class="headerlink" title="主从复制优化方案"></a>主从复制优化方案</h1><ul>
+<li>若一主多从，master 既需要负责写操作，又要负责为几个从库提供二进制日志。此时可以稍做调整，将 binlog 只给某一 slave，该 slave 再开启 binlog 并将自己的 binlog 再分发给其他从库。或者是干脆这个从库不记录数据，只负责转发 binlog。</li>
+<li>And so on …</li>
+</ul>
+<h1 id="主从数据一致性检测"><a href="#主从数据一致性检测" class="headerlink" title="主从数据一致性检测"></a>主从数据一致性检测</h1><p>TODO…</p>
+<h1 id="读写分离"><a href="#读写分离" class="headerlink" title="读写分离"></a>读写分离</h1><ul>
+<li>优点<ul>
+<li>高可用</li>
+<li>负载均衡</li>
+<li>业务模块化（索引 | 存储引擎）</li>
+<li>数据备份</li>
+<li>便于拓展</li>
+</ul>
+</li>
+<li>存在的问题<ul>
+<li>成本增加（增加机器 | 额外开启 binlog 占用存储空间）</li>
+<li>slave 数据延迟</li>
+<li>写入更慢</li>
+</ul>
+</li>
+<li>主流实现方式<ul>
+<li>程序代码内部实现</li>
+<li>中间代理层实现</li>
+</ul>
+</li>
+</ul>
+<h1 id="数据库中间件"><a href="#数据库中间件" class="headerlink" title="数据库中间件"></a>数据库中间件</h1><ul>
+<li>读写分离方案</li>
+<li>负载均衡的简单实现</li>
+<li>分库分表主流实现思路<ul>
+<li>业务起步初始，为了加快应用上线和快速迭代，很多应用都采用集中式的架构。随着业务系统的扩大，系统变得越来越复杂，通过硬件提高系统性能的方式带来的成本也越来越高。</li>
+</ul>
+</li>
+</ul>
+<h1 id="Just-do-it"><a href="#Just-do-it" class="headerlink" title="Just do it !"></a>Just do it !</h1><h2 id="配置主库"><a href="#配置主库" class="headerlink" title="配置主库"></a>配置主库</h2><figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">[mysqld]</span><br><span class="line">server-id   = 1</span><br><span class="line">log_bin     = /var/log/mysql/mysql-bin.log</span><br><span class="line"></span><br><span class="line"><span class="meta">#</span> binlog_format = "STATEMENT"</span><br><span class="line"><span class="meta">#</span> binlog_format = "ROW"</span><br><span class="line"><span class="meta">#</span> binlog_format = "MIXED"</span><br><span class="line"></span><br><span class="line"><span class="meta">#</span> 被忽略的数据库</span><br><span class="line"><span class="meta">#</span> binlog-ignore-db=mysql</span><br><span class="line"></span><br><span class="line"><span class="meta">#</span> 需要同步的数据库，不配置则表示同步所有</span><br><span class="line"><span class="meta">#</span> binlog-do-db=DB-XXX</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 查看binlog模式</span></span><br><span class="line"><span class="keyword">SHOW</span> <span class="keyword">GLOBAL</span> <span class="keyword">VARIABLES</span> <span class="keyword">LIKE</span> <span class="string">'%binlog_format%'</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment"># 查看binlog</span></span><br><span class="line"><span class="keyword">SHOW</span> <span class="keyword">MASTER</span> <span class="keyword">STATUS</span>;</span><br></pre></td></tr></table></figure>
+
+<h2 id="配置从库"><a href="#配置从库" class="headerlink" title="配置从库"></a>配置从库</h2><figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">[mysqld]</span><br><span class="line">server-id = 2</span><br><span class="line"></span><br><span class="line"><span class="meta">#</span> 忽略的数据库</span><br><span class="line"><span class="meta">#</span> replicate-ignore-db=mysql</span><br><span class="line"></span><br><span class="line"><span class="meta">#</span> 需要同步的数据库，不配置则表示同步所有</span><br><span class="line"><span class="meta">#</span> replicate-do-db=DB-XXX</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">STOP</span> <span class="keyword">SLAVE</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment"># 连接master</span></span><br><span class="line"><span class="comment"># 其中repl是master上拥有 Replication Slave 权限的账户</span></span><br><span class="line"><span class="keyword">CHANGE</span> <span class="keyword">MASTER</span> <span class="keyword">TO</span> </span><br><span class="line">master_host = <span class="string">'127.0.0.1'</span>,</span><br><span class="line">master_port = <span class="number">3306</span>,</span><br><span class="line">master_user = <span class="string">'repl'</span>,</span><br><span class="line">master_password = <span class="string">'passw0rd'</span></span><br><span class="line">master_log_file = <span class="string">'master-bin.000001'</span>,</span><br><span class="line">master_log_pos = <span class="number">0</span>;</span><br><span class="line"></span><br><span class="line"><span class="keyword">START</span> <span class="keyword">SLAVE</span>;</span><br></pre></td></tr></table></figure>
+
+<h2 id="查看binlog文件"><a href="#查看binlog文件" class="headerlink" title="查看binlog文件"></a>查看binlog文件</h2><ul>
+<li>binlog文件一般为mysql-bin.+序号</li>
+<li>重启mysql或运行flush logs,都会生成一个新的二进制日志，并且序号加1</li>
+<li>索引文件mysql-bin.index</li>
+</ul>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">SHOW</span> <span class="built_in">BINARY</span> <span class="keyword">LOGS</span>;</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">mysqlbinlog --base64-output="decode-rows" mysql-bin.000001</span><br></pre></td></tr></table></figure>
+    </div>
+
+    <div class="post-line"></div>
+
+    
+    
+    <a href="https://www.whiscc.com/tags/MySQL/">
+        <div class="post-tag animated">
+            # MySQL
+        </div>
+    </a>
+    
+    
+</div>            </div>
+        </div>
+        <!-- 引入侧边栏 -->
+        <aside id="aside">
+            <!-- 关注 -->
+<div class="aside__item">
+    <div class="aside__item--title">关注</div>
+    <ul>
+        
+        <a href="https://github.com/CareyWang" target="_blank">
+            <li class="aside__item--li">GitHub</li>
+        </a>
+        
+    </ul>
+</div>
+
+<!-- 分类 -->
+<div class="aside__item">
+    <div class="aside__item--title">分类</div>
+    <ul>
+        
+    </ul>
+</div>
+
+<!-- 标签 -->
+<div class="aside__item">
+    <div class="aside__item--title">标签</div>
+    <ul class="aside-tag">
+        
+        <a href="https://www.whiscc.com/tags/php/">
+            <li class="aside__item--li tag">php</li>
+        </a>
+        
+        <a href="https://www.whiscc.com/tags/MySQL/">
+            <li class="aside__item--li tag">MySQL</li>
+        </a>
+        
+        <a href="https://www.whiscc.com/tags/Redis/">
+            <li class="aside__item--li tag">Redis</li>
+        </a>
+        
+    </ul>
+</div>
+
+            <!-- 回到顶部 -->
+            <a href="#top" target="_self" class="animated" id="back-to-top">
+                <img src="/images/top.png" alt="logo" id="back-to-top--icon">
+            </a>
+        </aside>
+        <!-- 移动端抽屉菜单 -->
+        <div id="slider">
+    <div>
+        <div id="slider-menu">
+            
+            <li id="menu">
+                <a href="/" class="menu-item">主页</a>
+            </li>
+            
+            <li id="menu">
+                <a href="/archives" class="menu-item">归档</a>
+            </li>
+            
+            <li id="menu">
+                <a href="/about" class="menu-item">关于我</a>
+            </li>
+            
+        </div>
+        <div id="slider-aside">
+            <!-- 关注 -->
+<div class="aside__item">
+    <div class="aside__item--title">关注</div>
+    <ul>
+        
+        <a href="https://github.com/CareyWang" target="_blank">
+            <li class="aside__item--li">GitHub</li>
+        </a>
+        
+    </ul>
+</div>
+
+<!-- 分类 -->
+<div class="aside__item">
+    <div class="aside__item--title">分类</div>
+    <ul>
+        
+    </ul>
+</div>
+
+<!-- 标签 -->
+<div class="aside__item">
+    <div class="aside__item--title">标签</div>
+    <ul class="aside-tag">
+        
+        <a href="https://www.whiscc.com/tags/php/">
+            <li class="aside__item--li tag">php</li>
+        </a>
+        
+        <a href="https://www.whiscc.com/tags/MySQL/">
+            <li class="aside__item--li tag">MySQL</li>
+        </a>
+        
+        <a href="https://www.whiscc.com/tags/Redis/">
+            <li class="aside__item--li tag">Redis</li>
+        </a>
+        
+    </ul>
+</div>
+        </div>
+    </div>
+</div>
+    </div>
+
+    <!-- 引入页脚 -->
+    <footer id="footer">
+        <p class="footer-info">
+    <a href="http://www.beian.miit.gov.cn/" target="_blank">沪ICP备19029040号-2</a>
+    © 2019 <a href="https://github.com/CareyWang" class="footer-link" target="_blank">CareyWang</a>
+
+    <br>
+    Theme <a href="https://github.com/junbin123/hexo-theme-binbin" class="footer-link" target="_blank">Binbin</a> |
+    Powered by <a href="https://hexo.io/zh-cn/" class="footer-link" target="_blank">Hexo</a>
+</p>
+    </footer>
+
+
+    <!-- 引入jquery -->
+    <script src="/js/jquery-3.4.1.min.js"></script>
+    <!-- 引入js文件 -->
+    <script src="/js/main.js"></script>
+    <!-- 引入代码高亮的 js -->
+    <script src="/js/highlight/highlight.pack.js"></script>
+    <script>hljs.initHighlightingOnLoad();</script>
+</body>
+
+</html>

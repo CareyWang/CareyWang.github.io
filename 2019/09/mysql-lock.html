@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head><meta name="generator" content="Hexo 3.9.0">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CareyWong's backyard</title>
+    <!-- 引入配置文件 -->
+    <link rel="stylesheet" href="/css/main.css">
+    <!-- 代码高亮库 -->
+    <link rel="stylesheet" href="/js/highlight/styles/github-gist.css">
+    <!-- 插入favicon -->
+    <link rel="shortcut icon" href="/images/favicon.ico">
+    <!-- 引入字体 -->
+    <link rel="stylesheet" href="/css/font.css">
+    <!-- 引入animate.css -->
+    <link rel="stylesheet" href="https://cdn.bootcss.com/animate.css/3.7.2/animate.min.css">
+</head>
+
+<body id="animated body">
+    <div id="bg-cover"></div>
+    <div id="bg-cover-up"></div>
+
+    <!-- 引入导航 -->
+    <header id="header">
+        <div id="header-container">
+            <div class="header__left animated">
+    <a href="https://www.whiscc.com">
+        <img src="/images/logo.png" alt="logo" class="logo">
+        <h1 class="title">CareyWong's backyard</h1>
+    </a>
+</div>
+
+<nav class="header__right">
+
+
+    <div class="web">
+        <!-- 内部页面 -->
+        
+        <li id="menu">
+            <a href="/" class="menu-item">主页</a>
+        </li>
+        
+        <li id="menu">
+            <a href="/archives" class="menu-item">归档</a>
+        </li>
+        
+        <li id="menu">
+            <a href="/about" class="menu-item">关于我</a>
+        </li>
+        
+        <!-- RSS 链接 -->
+        <a href="https://www.whiscc.com/atom.xml" target="_blank">
+            <img src="/images/rss.png" alt="rss" class="rss">
+        </a>
+    </div>
+
+</nav>
+
+
+        </div>
+    </header>
+
+    <div class="mobile">
+        <div class="icon-box-60px" id="slider-icon">
+            <img src="/images/more.png" alt="more-icon" class="icon-30px">
+        </div>
+    </div>
+
+
+    <div id="main">
+        <!-- 引入内容 -->
+        <div id="center">
+            <div id="content">
+                <div id="post-container">
+    <div id="post">
+        
+        
+        
+        <div class="post-title">
+            MySQL锁机制
+        </div>
+        <div class="post-info">
+            <span>2019-09-18</span> ·
+            <span>CareyWong</span>
+        </div>
+        <div class="post-line"></div>
+    </div>
+
+    <div id="article">
+        <h1 id="1-乐观锁与悲观锁"><a href="#1-乐观锁与悲观锁" class="headerlink" title="1.乐观锁与悲观锁"></a>1.乐观锁与悲观锁</h1><h2 id="乐观锁"><a href="#乐观锁" class="headerlink" title="乐观锁"></a>乐观锁</h2><p>不主动加锁，而是在更新前通过校验来判别数据是否被修改。一般通过数据版本（version）记录机制实现，数据行增加 version 字段，每次更新数据都更新对应 version。当读取数据时，version 字段一同取出，提交更新时对比数据行当前 version 是否与之前一致，如果一致则表明数据可进行更新操作，如不一致则认为数据为过期数据，不予更新。</p>
+<h2 id="悲观锁"><a href="#悲观锁" class="headerlink" title="悲观锁"></a>悲观锁</h2><p>认为每次操作都会存在数据冲突，所以每次操作时，都需要主动获取锁才能对数据进行操作。悲观锁由数据库内部实现，调用相关语句即可。</p>
+<h3 id="共享锁与排他锁"><a href="#共享锁与排他锁" class="headerlink" title="共享锁与排他锁"></a>共享锁与排他锁</h3><blockquote>
+<p>共享锁与排他锁都属于悲观锁的范畴，是悲观锁的不同实现。</p>
+</blockquote>
+<ul>
+<li><p>共享锁<br>共享锁，俗称读锁（read lock），是由读取操作创建的锁。所有用户可同时获取共享锁，并发读取数据，但是任何事务都不能对该数据进行修改（即获得排他锁）直至共享锁全部被释放。如果事务对加了读锁的数据进行写操作，很可能造成死锁。</p>
+</li>
+<li><p>排他锁<br>排他锁，俗称写锁（write lock），会阻塞其他所有排他锁与共享锁。某一事务对一行数据加上排他锁，则其他事务不能对该行进行读写操作，在此事务结束前，其他事务不能堆该行加任何锁。</p>
+</li>
+</ul>
+<h1 id="2-行锁与表锁"><a href="#2-行锁与表锁" class="headerlink" title="2.行锁与表锁"></a>2.行锁与表锁</h1><h2 id="行锁"><a href="#行锁" class="headerlink" title="行锁"></a>行锁</h2><p>Innodb 基于索引实现行锁，实质上是针对索引加锁而不是针对数据记录加锁，在加锁期间若索引失效，行锁会升级成表锁。</p>
+<h2 id="表锁"><a href="#表锁" class="headerlink" title="表锁"></a>表锁</h2><p>Innodb 与 MyISAM 均支持表锁，Innodb 在不通过索引检索数据时，会使用表锁。</p>
+<h1 id="3-MVCC（Multi-Version-Concurrency-Control：多版本并发控制）"><a href="#3-MVCC（Multi-Version-Concurrency-Control：多版本并发控制）" class="headerlink" title="3.MVCC（Multi-Version Concurrency Control：多版本并发控制）"></a>3.MVCC（Multi-Version Concurrency Control：多版本并发控制）</h1><p>MVCC，即同一份数据临时保留多版本的一种方式，进而实现并发控制。在MySQL中建表时，每个表都会有三列隐藏记录，跟MVCC相关的有：数据行的版本号(DB_TRX_ID)、删除版本号 (DB_ROLL_PT)。</p>
+<h2 id="MVCC-insert"><a href="#MVCC-insert" class="headerlink" title="MVCC-insert"></a>MVCC-insert</h2><p>执行插入操作时，将全局事务ID写入 DB_TRX_ID。</p>
+<h2 id="MVCC-delete"><a href="#MVCC-delete" class="headerlink" title="MVCC-delete"></a>MVCC-delete</h2><p>执行删除操作时，数据并没有被真正删除，而是全局事务ID记录至 DB_ROLL_PT。</p>
+<h2 id="MVCC-update"><a href="#MVCC-update" class="headerlink" title="MVCC-update"></a>MVCC-update</h2><p>复制当前记录行A的副本到一条新的记录B，B中 DB_TRX_ID 置为 A 的 DB_ROLL_PT。</p>
+<h2 id="MVCC-select"><a href="#MVCC-select" class="headerlink" title="MVCC-select"></a>MVCC-select</h2><p>查找数据行版本号小于当前事务版本号、删除版本号要么为 NULL 要么大于当前事务版本号的数据行记录，确保查询出来的数据行记录在事务开启之前没有被删除。</p>
+
+    </div>
+
+    <div class="post-line"></div>
+
+    
+    
+    <a href="https://www.whiscc.com/tags/MySQL/">
+        <div class="post-tag animated">
+            # MySQL
+        </div>
+    </a>
+    
+    
+</div>            </div>
+        </div>
+        <!-- 引入侧边栏 -->
+        <aside id="aside">
+            <!-- 关注 -->
+<div class="aside__item">
+    <div class="aside__item--title">关注</div>
+    <ul>
+        
+        <a href="https://github.com/CareyWang" target="_blank">
+            <li class="aside__item--li">GitHub</li>
+        </a>
+        
+    </ul>
+</div>
+
+<!-- 分类 -->
+<div class="aside__item">
+    <div class="aside__item--title">分类</div>
+    <ul>
+        
+    </ul>
+</div>
+
+<!-- 标签 -->
+<div class="aside__item">
+    <div class="aside__item--title">标签</div>
+    <ul class="aside-tag">
+        
+        <a href="https://www.whiscc.com/tags/php/">
+            <li class="aside__item--li tag">php</li>
+        </a>
+        
+        <a href="https://www.whiscc.com/tags/MySQL/">
+            <li class="aside__item--li tag">MySQL</li>
+        </a>
+        
+        <a href="https://www.whiscc.com/tags/Redis/">
+            <li class="aside__item--li tag">Redis</li>
+        </a>
+        
+    </ul>
+</div>
+
+            <!-- 回到顶部 -->
+            <a href="#top" target="_self" class="animated" id="back-to-top">
+                <img src="/images/top.png" alt="logo" id="back-to-top--icon">
+            </a>
+        </aside>
+        <!-- 移动端抽屉菜单 -->
+        <div id="slider">
+    <div>
+        <div id="slider-menu">
+            
+            <li id="menu">
+                <a href="/" class="menu-item">主页</a>
+            </li>
+            
+            <li id="menu">
+                <a href="/archives" class="menu-item">归档</a>
+            </li>
+            
+            <li id="menu">
+                <a href="/about" class="menu-item">关于我</a>
+            </li>
+            
+        </div>
+        <div id="slider-aside">
+            <!-- 关注 -->
+<div class="aside__item">
+    <div class="aside__item--title">关注</div>
+    <ul>
+        
+        <a href="https://github.com/CareyWang" target="_blank">
+            <li class="aside__item--li">GitHub</li>
+        </a>
+        
+    </ul>
+</div>
+
+<!-- 分类 -->
+<div class="aside__item">
+    <div class="aside__item--title">分类</div>
+    <ul>
+        
+    </ul>
+</div>
+
+<!-- 标签 -->
+<div class="aside__item">
+    <div class="aside__item--title">标签</div>
+    <ul class="aside-tag">
+        
+        <a href="https://www.whiscc.com/tags/php/">
+            <li class="aside__item--li tag">php</li>
+        </a>
+        
+        <a href="https://www.whiscc.com/tags/MySQL/">
+            <li class="aside__item--li tag">MySQL</li>
+        </a>
+        
+        <a href="https://www.whiscc.com/tags/Redis/">
+            <li class="aside__item--li tag">Redis</li>
+        </a>
+        
+    </ul>
+</div>
+        </div>
+    </div>
+</div>
+    </div>
+
+    <!-- 引入页脚 -->
+    <footer id="footer">
+        <p class="footer-info">
+    <a href="http://www.beian.miit.gov.cn/" target="_blank">沪ICP备19029040号-2</a>
+    © 2019 <a href="https://github.com/CareyWang" class="footer-link" target="_blank">CareyWang</a>
+
+    <br>
+    Theme <a href="https://github.com/junbin123/hexo-theme-binbin" class="footer-link" target="_blank">Binbin</a> |
+    Powered by <a href="https://hexo.io/zh-cn/" class="footer-link" target="_blank">Hexo</a>
+</p>
+    </footer>
+
+
+    <!-- 引入jquery -->
+    <script src="/js/jquery-3.4.1.min.js"></script>
+    <!-- 引入js文件 -->
+    <script src="/js/main.js"></script>
+    <!-- 引入代码高亮的 js -->
+    <script src="/js/highlight/highlight.pack.js"></script>
+    <script>hljs.initHighlightingOnLoad();</script>
+</body>
+
+</html>

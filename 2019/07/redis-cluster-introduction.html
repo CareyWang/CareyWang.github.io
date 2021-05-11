@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head><meta name="generator" content="Hexo 3.9.0">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CareyWong's backyard</title>
+    <!-- 引入配置文件 -->
+    <link rel="stylesheet" href="/css/main.css">
+    <!-- 代码高亮库 -->
+    <link rel="stylesheet" href="/js/highlight/styles/github-gist.css">
+    <!-- 插入favicon -->
+    <link rel="shortcut icon" href="/images/favicon.ico">
+    <!-- 引入字体 -->
+    <link rel="stylesheet" href="/css/font.css">
+    <!-- 引入animate.css -->
+    <link rel="stylesheet" href="https://cdn.bootcss.com/animate.css/3.7.2/animate.min.css">
+</head>
+
+<body id="animated body">
+    <div id="bg-cover"></div>
+    <div id="bg-cover-up"></div>
+
+    <!-- 引入导航 -->
+    <header id="header">
+        <div id="header-container">
+            <div class="header__left animated">
+    <a href="https://www.whiscc.com">
+        <img src="/images/logo.png" alt="logo" class="logo">
+        <h1 class="title">CareyWong's backyard</h1>
+    </a>
+</div>
+
+<nav class="header__right">
+
+
+    <div class="web">
+        <!-- 内部页面 -->
+        
+        <li id="menu">
+            <a href="/" class="menu-item">主页</a>
+        </li>
+        
+        <li id="menu">
+            <a href="/archives" class="menu-item">归档</a>
+        </li>
+        
+        <li id="menu">
+            <a href="/about" class="menu-item">关于我</a>
+        </li>
+        
+        <!-- RSS 链接 -->
+        <a href="https://www.whiscc.com/atom.xml" target="_blank">
+            <img src="/images/rss.png" alt="rss" class="rss">
+        </a>
+    </div>
+
+</nav>
+
+
+        </div>
+    </header>
+
+    <div class="mobile">
+        <div class="icon-box-60px" id="slider-icon">
+            <img src="/images/more.png" alt="more-icon" class="icon-30px">
+        </div>
+    </div>
+
+
+    <div id="main">
+        <!-- 引入内容 -->
+        <div id="center">
+            <div id="content">
+                <div id="post-container">
+    <div id="post">
+        
+        
+        
+        <div class="post-title">
+            Redis 集群之 Redis-Cluster
+        </div>
+        <div class="post-info">
+            <span>2019-07-13</span> ·
+            <span>CareyWong</span>
+        </div>
+        <div class="post-line"></div>
+    </div>
+
+    <div id="article">
+        <h1 id="业务背景"><a href="#业务背景" class="headerlink" title="业务背景"></a>业务背景</h1><p>&emsp;&emsp;组内大约是去年引入 redis 作为缓存服务，由于当时经验的欠缺，只是局限于 key-value 存储极少部分配置，因此只是在某台机器上起了一个 docker，一台 redis 服务供几个系统调用。<br>&emsp;&emsp;由于业务需求、组内成员缓存方面知识加深以及我这个『始作俑者』对缓存的好感，缓存使用频度日益增长。虽然性能上暂时还未出现瓶颈，在新系统上线后，基于 redis 消息队列的加入、各类非关系型数据的存储逐渐增加，加上缓存的手动刷新机制的不完善，redis 业务分离与灾备刻不容缓。</p>
+<hr>
+<h1 id="方案"><a href="#方案" class="headerlink" title="方案"></a>方案</h1><h2 id="Redis-Sentinel"><a href="#Redis-Sentinel" class="headerlink" title="Redis-Sentinel"></a>Redis-Sentinel</h2><p>高可用集群，各节点同时只有一个 master，各实例数据保持一致。</p>
+<p><img src="http://pugk0v3np.bkt.clouddn.com/redis-sentinel.png" alt="avatar"></p>
+<h2 id="Redis-Cluster"><a href="#Redis-Cluster" class="headerlink" title="Redis-Cluster"></a>Redis-Cluster</h2><p>分布式集群，同时有多个 master，数据分片部署在各个 master 上（不一定均匀），也是本次实践的目标。</p>
+<p><img src="http://pugk0v3np.bkt.clouddn.com/redis-cluster-model.png" alt="avatar"></p>
+<ul>
+<li>特点<ul>
+<li>无中心节点，客户端与 redis节点直连，不需要中间代理层。</li>
+<li>数据可以被分片存储，集群数据加起来就是全量数据。</li>
+<li>可以通过任意一个节点，读写不属于本节点的数据。</li>
+<li>管理方便，后续可自行增加或删除节点。</li>
+</ul>
+</li>
+<li>结构特点<ul>
+<li>所有的 redis 节点彼此互联(PING-PONG机制)，内部使用二进制协议优化传输速度和带宽。</li>
+<li>节点的 fail 是通过集群中超过半数的节点检测失效时才生效。</li>
+<li>Redis 集群预分好 16384 个哈希槽(hash slot)，当需要在 Redis 集群中放置一个 key-value 时，根据 CRC16(key) mod 16384 的值，决定将一个 key 放到哪个哈希槽中。<br><img src="http://pugk0v3np.bkt.clouddn.com/redis-cluster.png" alt="avatar"></li>
+</ul>
+</li>
+<li>由于采用无中心结构，每个节点保存数据和整个集群状态，每个节点都和其他所有节点连接。</li>
+<li>由于分片存储，当集群中一个节点故障时，会损失该节点数据。为了实现高可用，需要对每个节点各添加一个从节点，形成主从同步。</li>
+<li>为了保证数据的高可用性，加入了主从模式，一个 master 对应一个或多个 slave ，master 提供数据存取，slave 则是从 master 拉取数据备份。当 master 挂了，就会从 slave 节点中选取一个来充当 master，从而保证集群不会挂掉。</li>
+</ul>
+<hr>
+<h1 id="Just-do-it"><a href="#Just-do-it" class="headerlink" title="Just do it !"></a>Just do it !</h1><h2 id="依赖"><a href="#依赖" class="headerlink" title="依赖"></a>依赖</h2><p>本次 Redis-Cluster 在 Ubuntu 下，基于 Docker + Docker-Compose + 官方 Redis 镜像实现，后续可能加入 ES &amp; Kibana &amp; Zabbix 做数据分析与监控。</p>
+<table>
+<thead>
+<tr>
+<th>Program</th>
+<th>Version</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Ubuntu</td>
+<td>16.04</td>
+</tr>
+<tr>
+<td>Docker</td>
+<td>18.09.1, build 4c52b90</td>
+</tr>
+<tr>
+<td>Docker-Compose</td>
+<td>1.17.1, build 6d101fb</td>
+</tr>
+<tr>
+<td>Redis</td>
+<td>5.0.5</td>
+</tr>
+</tbody></table>
+<h2 id="开工"><a href="#开工" class="headerlink" title="开工"></a>开工</h2><blockquote>
+<p><a href="https://github.com/CareyWang/gaia/tree/master/redis" target="_blank" rel="noopener">Github</a> 可以找到下面 docker-compose.yml 以及其他配置。学习之路才刚刚开始，欢迎大佬们指正错误。</p>
+</blockquote>
+<ul>
+<li>建立集群</li>
+</ul>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br></pre></td><td class="code"><pre><span class="line">&gt; <span class="built_in">cd</span> /var/www/http/docker/redis/cluster</span><br><span class="line"></span><br><span class="line"><span class="comment"># 由于 Redis-Cluster fail 机制的要求，需要奇数台服务，即最少开启三台 master，也就是三主三从，六个服务</span></span><br><span class="line">&gt; docker-compose up -d</span><br><span class="line">Creating network <span class="string">"redis_cluster-net"</span> with the default driver</span><br><span class="line">Creating redis-node-6 ... <span class="keyword">done</span></span><br><span class="line">Creating redis-node-3 ... <span class="keyword">done</span></span><br><span class="line">Creating redis-node-4 ... <span class="keyword">done</span></span><br><span class="line">Creating redis-node-2 ... <span class="keyword">done</span></span><br><span class="line">Creating redis-node-5 ... <span class="keyword">done</span></span><br><span class="line">Creating redis-node-1 ... <span class="keyword">done</span></span><br><span class="line"></span><br><span class="line">&gt; docker ps</span><br><span class="line">CONTAINER ID        IMAGE               COMMAND                  CREATED             STATUS              PORTS                                               NAMES</span><br><span class="line">a4c9fc13b94b        redis:5.0.5         <span class="string">"docker-entrypoint.s…"</span>   34 minutes ago      Up 34 minutes       0.0.0.0:46378-&gt;6379/tcp, 0.0.0.0:56378-&gt;56379/tcp   redis-node-2</span><br><span class="line">ae35b2c82512        redis:5.0.5         <span class="string">"docker-entrypoint.s…"</span>   34 minutes ago      Up 34 minutes       0.0.0.0:46377-&gt;6379/tcp, 0.0.0.0:56377-&gt;56379/tcp   redis-node-3</span><br><span class="line">b3d3dd2c5c18        redis:5.0.5         <span class="string">"docker-entrypoint.s…"</span>   34 minutes ago      Up 34 minutes       0.0.0.0:46376-&gt;6379/tcp, 0.0.0.0:56376-&gt;56379/tcp   redis-node-4</span><br><span class="line">fbc91dfe0274        redis:5.0.5         <span class="string">"docker-entrypoint.s…"</span>   34 minutes ago      Up 34 minutes       0.0.0.0:56379-&gt;56379/tcp, 0.0.0.0:46379-&gt;6379/tcp   redis-node-1</span><br><span class="line">ddd307094e91        redis:5.0.5         <span class="string">"docker-entrypoint.s…"</span>   34 minutes ago      Up 34 minutes       0.0.0.0:46375-&gt;6379/tcp, 0.0.0.0:56375-&gt;56379/tcp   redis-node-5</span><br><span class="line">125ba63e2d62        redis:5.0.5         <span class="string">"docker-entrypoint.s…"</span>   34 minutes ago      Up 34 minutes       0.0.0.0:46374-&gt;6379/tcp, 0.0.0.0:56374-&gt;56379/tcp   redis-node-6</span><br><span class="line"></span><br><span class="line"><span class="comment"># 随意进入刚才创建的某个 docker </span></span><br><span class="line">&gt; docker <span class="built_in">exec</span> -it redis-node-1 bash</span><br><span class="line"></span><br><span class="line"><span class="comment"># 建立 redis 集群，--cluster-replicas 表明每台实例有一台 slave </span></span><br><span class="line">&gt; redis-cli --cluster create 172.10.15.11:6379 172.10.15.12:6379 172.10.15.13:6379 172.10.15.14:6379 172.10.15.15:6379 172.10.15.16:6379 --cluster-replicas 1</span><br><span class="line">&gt;&gt;&gt; Performing <span class="built_in">hash</span> slots allocation on 6 nodes...</span><br><span class="line">Master[0] -&gt; Slots 0 - 5460</span><br><span class="line">Master[1] -&gt; Slots 5461 - 10922</span><br><span class="line">Master[2] -&gt; Slots 10923 - 16383</span><br><span class="line">Adding replica 172.10.15.15:6379 to 172.10.15.11:6379</span><br><span class="line">Adding replica 172.10.15.16:6379 to 172.10.15.12:6379</span><br><span class="line">Adding replica 172.10.15.14:6379 to 172.10.15.13:6379</span><br><span class="line">M: 5f5d5d64f02f5b7b9df21c9e58aa5ea860749a15 172.10.15.11:6379</span><br><span class="line">   slots:[0-5460] (5461 slots) master</span><br><span class="line">M: 61d23b6fe5f5a7d2ff97cc9d33c192c6fc8dcd58 172.10.15.12:6379</span><br><span class="line">   slots:[5461-10922] (5462 slots) master</span><br><span class="line">M: 011d9587f7d2b11890bce67ea70f614fd726a881 172.10.15.13:6379</span><br><span class="line">   slots:[10923-16383] (5461 slots) master</span><br><span class="line">S: 472b162a3dd50ee8f805780be576cd21a292d3e2 172.10.15.14:6379</span><br><span class="line">   replicates 011d9587f7d2b11890bce67ea70f614fd726a881</span><br><span class="line">S: 81d44f046103351041bf0dd8cae8643269029354 172.10.15.15:6379</span><br><span class="line">   replicates 5f5d5d64f02f5b7b9df21c9e58aa5ea860749a15</span><br><span class="line">S: ef57b7c1b1378ad43fe396c5780a653a6989594f 172.10.15.16:6379</span><br><span class="line">   replicates 61d23b6fe5f5a7d2ff97cc9d33c192c6fc8dcd58</span><br><span class="line">Can I <span class="built_in">set</span> the above configuration? (<span class="built_in">type</span> <span class="string">'yes'</span> to accept): yes</span><br><span class="line">&gt;&gt;&gt; Nodes configuration updated</span><br><span class="line">&gt;&gt;&gt; Assign a different config epoch to each node</span><br><span class="line">&gt;&gt;&gt; Sending CLUSTER MEET messages to join the cluster</span><br><span class="line">Waiting <span class="keyword">for</span> the cluster to join</span><br><span class="line">.....</span><br><span class="line">&gt;&gt;&gt; Performing Cluster Check (using node 172.10.15.11:6379)</span><br><span class="line">M: 5f5d5d64f02f5b7b9df21c9e58aa5ea860749a15 172.10.15.11:6379</span><br><span class="line">   slots:[0-5460] (5461 slots) master</span><br><span class="line">   1 additional replica(s)</span><br><span class="line">S: ef57b7c1b1378ad43fe396c5780a653a6989594f 172.10.15.16:6379</span><br><span class="line">   slots: (0 slots) slave</span><br><span class="line">   replicates 61d23b6fe5f5a7d2ff97cc9d33c192c6fc8dcd58</span><br><span class="line">S: 81d44f046103351041bf0dd8cae8643269029354 172.10.15.15:6379</span><br><span class="line">   slots: (0 slots) slave</span><br><span class="line">   replicates 5f5d5d64f02f5b7b9df21c9e58aa5ea860749a15</span><br><span class="line">M: 011d9587f7d2b11890bce67ea70f614fd726a881 172.10.15.13:6379</span><br><span class="line">   slots:[10923-16383] (5461 slots) master</span><br><span class="line">   1 additional replica(s)</span><br><span class="line">S: 472b162a3dd50ee8f805780be576cd21a292d3e2 172.10.15.14:6379</span><br><span class="line">   slots: (0 slots) slave</span><br><span class="line">   replicates 011d9587f7d2b11890bce67ea70f614fd726a881</span><br><span class="line">M: 61d23b6fe5f5a7d2ff97cc9d33c192c6fc8dcd58 172.10.15.12:6379</span><br><span class="line">   slots:[5461-10922] (5462 slots) master</span><br><span class="line">   1 additional replica(s)</span><br><span class="line">[OK] All nodes agree about slots configuration.</span><br><span class="line">&gt;&gt;&gt; Check <span class="keyword">for</span> open slots...</span><br><span class="line">&gt;&gt;&gt; Check slots coverage...</span><br><span class="line">[OK] All 16384 slots covered.</span><br></pre></td></tr></table></figure>
+
+<h2 id="集群测试"><a href="#集群测试" class="headerlink" title="集群测试"></a>集群测试</h2><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># -c 表示连接的 Redis-Cluster 集群，这里必须加上，否则各台服务之间通信会有问题</span></span><br><span class="line">&gt; redis-cli -h 172.10.15.11 -p 6379 -c</span><br><span class="line"></span><br><span class="line"><span class="comment"># 查看集群信息</span></span><br><span class="line">172.10.15.11:6379&gt; cluster info </span><br><span class="line">cluster_state:ok</span><br><span class="line">cluster_slots_assigned:16384</span><br><span class="line">cluster_slots_ok:16384</span><br><span class="line">cluster_slots_pfail:0</span><br><span class="line">cluster_slots_fail:0</span><br><span class="line">cluster_known_nodes:6</span><br><span class="line">cluster_size:3</span><br><span class="line">cluster_current_epoch:6</span><br><span class="line">cluster_my_epoch:3</span><br><span class="line">cluster_stats_messages_ping_sent:343</span><br><span class="line">cluster_stats_messages_pong_sent:371</span><br><span class="line">cluster_stats_messages_meet_sent:1</span><br><span class="line">cluster_stats_messages_sent:715</span><br><span class="line">cluster_stats_messages_ping_received:367</span><br><span class="line">cluster_stats_messages_pong_received:344</span><br><span class="line">cluster_stats_messages_meet_received:4</span><br><span class="line">cluster_stats_messages_received:715</span><br><span class="line"></span><br><span class="line">172.10.15.11:6379&gt; <span class="built_in">set</span> user admin</span><br><span class="line">-&gt; Redirected to slot [5474] located at 172.10.15.12:6379</span><br><span class="line">OK</span><br></pre></td></tr></table></figure>
+
+<h1 id="业务使用"><a href="#业务使用" class="headerlink" title="业务使用"></a>业务使用</h1><blockquote>
+<p>由于目前作为一名 phper ，目前没有涉猎其他语言的扩展研究，这里只以 Predis 为例。原理都是相近，应该都有各自成熟的解决方案。</p>
+</blockquote>
+<figure class="highlight php"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 这里 server 可以填写上面六台中任意一台的 ip（当然不嫌麻烦也可以都填上），集群内部会自动重定向</span></span><br><span class="line">$servers = [</span><br><span class="line">    <span class="string">'tcp://172.10.15.11:6379'</span>,</span><br><span class="line">];</span><br><span class="line">$options = [<span class="string">'cluster'</span> =&gt; <span class="string">'redis'</span>];</span><br><span class="line"></span><br><span class="line">$client = <span class="keyword">new</span> Predis\Client($servers, $options);</span><br><span class="line">$client-&gt;set(<span class="string">'user'</span>, <span class="string">'admin'</span>);</span><br></pre></td></tr></table></figure>
+
+<h1 id="小结"><a href="#小结" class="headerlink" title="小结"></a>小结</h1><p>这里只是很简单地介绍了个人 Redis-Cluster 服务的搭建的经历，对于内部例如主从复制机制、通信机制等更深入的知识，个人也在学习之中。有遗漏之处，还望海涵。</p>
+
+    </div>
+
+    <div class="post-line"></div>
+
+    
+    
+    <a href="https://www.whiscc.com/tags/Redis/">
+        <div class="post-tag animated">
+            # Redis
+        </div>
+    </a>
+    
+    
+</div>            </div>
+        </div>
+        <!-- 引入侧边栏 -->
+        <aside id="aside">
+            <!-- 关注 -->
+<div class="aside__item">
+    <div class="aside__item--title">关注</div>
+    <ul>
+        
+        <a href="https://github.com/CareyWang" target="_blank">
+            <li class="aside__item--li">GitHub</li>
+        </a>
+        
+    </ul>
+</div>
+
+<!-- 分类 -->
+<div class="aside__item">
+    <div class="aside__item--title">分类</div>
+    <ul>
+        
+    </ul>
+</div>
+
+<!-- 标签 -->
+<div class="aside__item">
+    <div class="aside__item--title">标签</div>
+    <ul class="aside-tag">
+        
+        <a href="https://www.whiscc.com/tags/php/">
+            <li class="aside__item--li tag">php</li>
+        </a>
+        
+        <a href="https://www.whiscc.com/tags/MySQL/">
+            <li class="aside__item--li tag">MySQL</li>
+        </a>
+        
+        <a href="https://www.whiscc.com/tags/Redis/">
+            <li class="aside__item--li tag">Redis</li>
+        </a>
+        
+    </ul>
+</div>
+
+            <!-- 回到顶部 -->
+            <a href="#top" target="_self" class="animated" id="back-to-top">
+                <img src="/images/top.png" alt="logo" id="back-to-top--icon">
+            </a>
+        </aside>
+        <!-- 移动端抽屉菜单 -->
+        <div id="slider">
+    <div>
+        <div id="slider-menu">
+            
+            <li id="menu">
+                <a href="/" class="menu-item">主页</a>
+            </li>
+            
+            <li id="menu">
+                <a href="/archives" class="menu-item">归档</a>
+            </li>
+            
+            <li id="menu">
+                <a href="/about" class="menu-item">关于我</a>
+            </li>
+            
+        </div>
+        <div id="slider-aside">
+            <!-- 关注 -->
+<div class="aside__item">
+    <div class="aside__item--title">关注</div>
+    <ul>
+        
+        <a href="https://github.com/CareyWang" target="_blank">
+            <li class="aside__item--li">GitHub</li>
+        </a>
+        
+    </ul>
+</div>
+
+<!-- 分类 -->
+<div class="aside__item">
+    <div class="aside__item--title">分类</div>
+    <ul>
+        
+    </ul>
+</div>
+
+<!-- 标签 -->
+<div class="aside__item">
+    <div class="aside__item--title">标签</div>
+    <ul class="aside-tag">
+        
+        <a href="https://www.whiscc.com/tags/php/">
+            <li class="aside__item--li tag">php</li>
+        </a>
+        
+        <a href="https://www.whiscc.com/tags/MySQL/">
+            <li class="aside__item--li tag">MySQL</li>
+        </a>
+        
+        <a href="https://www.whiscc.com/tags/Redis/">
+            <li class="aside__item--li tag">Redis</li>
+        </a>
+        
+    </ul>
+</div>
+        </div>
+    </div>
+</div>
+    </div>
+
+    <!-- 引入页脚 -->
+    <footer id="footer">
+        <p class="footer-info">
+    <a href="http://www.beian.miit.gov.cn/" target="_blank">沪ICP备19029040号-2</a>
+    © 2019 <a href="https://github.com/CareyWang" class="footer-link" target="_blank">CareyWang</a>
+
+    <br>
+    Theme <a href="https://github.com/junbin123/hexo-theme-binbin" class="footer-link" target="_blank">Binbin</a> |
+    Powered by <a href="https://hexo.io/zh-cn/" class="footer-link" target="_blank">Hexo</a>
+</p>
+    </footer>
+
+
+    <!-- 引入jquery -->
+    <script src="/js/jquery-3.4.1.min.js"></script>
+    <!-- 引入js文件 -->
+    <script src="/js/main.js"></script>
+    <!-- 引入代码高亮的 js -->
+    <script src="/js/highlight/highlight.pack.js"></script>
+    <script>hljs.initHighlightingOnLoad();</script>
+</body>
+
+</html>

@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head><meta name="generator" content="Hexo 3.9.0">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CareyWong's backyard</title>
+    <!-- 引入配置文件 -->
+    <link rel="stylesheet" href="/css/main.css">
+    <!-- 代码高亮库 -->
+    <link rel="stylesheet" href="/js/highlight/styles/github-gist.css">
+    <!-- 插入favicon -->
+    <link rel="shortcut icon" href="/images/favicon.ico">
+    <!-- 引入字体 -->
+    <link rel="stylesheet" href="/css/font.css">
+    <!-- 引入animate.css -->
+    <link rel="stylesheet" href="https://cdn.bootcss.com/animate.css/3.7.2/animate.min.css">
+</head>
+
+<body id="animated body">
+    <div id="bg-cover"></div>
+    <div id="bg-cover-up"></div>
+
+    <!-- 引入导航 -->
+    <header id="header">
+        <div id="header-container">
+            <div class="header__left animated">
+    <a href="https://www.whiscc.com">
+        <img src="/images/logo.png" alt="logo" class="logo">
+        <h1 class="title">CareyWong's backyard</h1>
+    </a>
+</div>
+
+<nav class="header__right">
+
+
+    <div class="web">
+        <!-- 内部页面 -->
+        
+        <li id="menu">
+            <a href="/" class="menu-item">主页</a>
+        </li>
+        
+        <li id="menu">
+            <a href="/archives" class="menu-item">归档</a>
+        </li>
+        
+        <li id="menu">
+            <a href="/about" class="menu-item">关于我</a>
+        </li>
+        
+        <!-- RSS 链接 -->
+        <a href="https://www.whiscc.com/atom.xml" target="_blank">
+            <img src="/images/rss.png" alt="rss" class="rss">
+        </a>
+    </div>
+
+</nav>
+
+
+        </div>
+    </header>
+
+    <div class="mobile">
+        <div class="icon-box-60px" id="slider-icon">
+            <img src="/images/more.png" alt="more-icon" class="icon-30px">
+        </div>
+    </div>
+
+
+    <div id="main">
+        <!-- 引入内容 -->
+        <div id="center">
+            <div id="content">
+                <div id="post-container">
+    <div id="post">
+        
+        
+        
+        <div class="post-title">
+            MySQL 事务嵌套解决方案小结
+        </div>
+        <div class="post-info">
+            <span>2019-07-12</span> ·
+            <span>CareyWong</span>
+        </div>
+        <div class="post-line"></div>
+    </div>
+
+    <div id="article">
+        <p>&emsp;&emsp;MySQL 事务机制被广泛用于处理操作量大、复杂度高的数据，日常业务中也很常见。在默认的 MySQL 配置下，事务默认是自动提交的，因此要显式地开启一个事务务须使用命令 BEGIN 或 START TRANSACTION，或者执行命令 SET AUTOCOMMIT=0，用来禁止使用当前会话的自动提交。</p>
+<hr>
+<p>&emsp;&emsp;MySQL <a href="http://dev.mysql.com/doc/refman/5.0/en/implicit-commit.html" target="_blank" rel="noopener">官方文档</a>中，明确的说明了不支持嵌套事务嵌套。但是在我们开发一个复杂的系统时，由于思维的局限性，函数之间相互调用中，事务的嵌套很难彻底避免。</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br></pre></td><td class="code"><pre><span class="line">mysql&gt; SELECT `value` FROM tmptable.transaction_test;</span><br><span class="line">+<span class="comment">-------+</span></span><br><span class="line">| value |</span><br><span class="line">+<span class="comment">-------+</span></span><br><span class="line">| 1     |</span><br><span class="line">+<span class="comment">-------+</span></span><br><span class="line">1 row in <span class="keyword">set</span> (<span class="number">0.00</span> sec)</span><br><span class="line"></span><br><span class="line">mysql&gt; <span class="keyword">START</span> <span class="keyword">TRANSACTION</span>;</span><br><span class="line">Query OK, 0 rows affected (0.00 sec)</span><br><span class="line"></span><br><span class="line">mysql&gt; INSERT INTO tmptable.transaction_test (`value`) VALUES ( '2' );</span><br><span class="line">Query OK, 1 row affected (0.01 sec)</span><br><span class="line"></span><br><span class="line">mysql&gt; START TRANSACTION;</span><br><span class="line">Query OK, 0 rows affected (0.03 sec)</span><br><span class="line"></span><br><span class="line">mysql&gt; INSERT INTO tmptable.transaction_test (`value`) VALUES ( '3' );</span><br><span class="line">Query OK, 1 row affected (0.02 sec)</span><br><span class="line"></span><br><span class="line">mysql&gt; COMMIT;</span><br><span class="line">Query OK, 0 rows affected (0.04 sec)</span><br><span class="line"></span><br><span class="line">mysql&gt; ROLLBACK;</span><br><span class="line">Query OK, 0 rows affected (0.00 sec)</span><br><span class="line"></span><br><span class="line">mysql&gt; SELECT `value` FROM tmptable.transaction_test;</span><br><span class="line">+<span class="comment">-------+</span></span><br><span class="line">| value |</span><br><span class="line">+<span class="comment">-------+</span></span><br><span class="line">| 1     |</span><br><span class="line">| 2     |</span><br><span class="line">| 3     |</span><br><span class="line">+<span class="comment">-------+</span></span><br><span class="line">3 rows in <span class="keyword">set</span> (<span class="number">0.00</span> sec)</span><br></pre></td></tr></table></figure>
+
+<p>&emsp;&emsp;这段 SQL 的执行结果，按常规思维理解应该是 commit 操作提交了 2 的insert，rollback 操作回滚了 3 的 insert，最终结果应该是 1, 2。然而事实上，看上去 MySQL 只是执行了其中的 commit 操作，后续的 rollback 并没有带来数据上的改变。当 SQL 解释器遇到 START TRANSACTION 时候会触发 commit，也就是说 2 的 insert 操作在第二次开启事务时，已经被隐式地提交了。</p>
+<h1 id="ORM-中常见的解决思路"><a href="#ORM-中常见的解决思路" class="headerlink" title="ORM 中常见的解决思路"></a>ORM 中常见的解决思路</h1><ul>
+<li><a href="https://www.doctrine-project.org/" target="_blank" rel="noopener">Doctrine</a><br>TODO</li>
+<li>Laravel<br>TODO</li>
+</ul>
+
+    </div>
+
+    <div class="post-line"></div>
+
+    
+    
+    <a href="https://www.whiscc.com/tags/MySQL/">
+        <div class="post-tag animated">
+            # MySQL
+        </div>
+    </a>
+    
+    
+</div>            </div>
+        </div>
+        <!-- 引入侧边栏 -->
+        <aside id="aside">
+            <!-- 关注 -->
+<div class="aside__item">
+    <div class="aside__item--title">关注</div>
+    <ul>
+        
+        <a href="https://github.com/CareyWang" target="_blank">
+            <li class="aside__item--li">GitHub</li>
+        </a>
+        
+    </ul>
+</div>
+
+<!-- 分类 -->
+<div class="aside__item">
+    <div class="aside__item--title">分类</div>
+    <ul>
+        
+    </ul>
+</div>
+
+<!-- 标签 -->
+<div class="aside__item">
+    <div class="aside__item--title">标签</div>
+    <ul class="aside-tag">
+        
+        <a href="https://www.whiscc.com/tags/php/">
+            <li class="aside__item--li tag">php</li>
+        </a>
+        
+        <a href="https://www.whiscc.com/tags/MySQL/">
+            <li class="aside__item--li tag">MySQL</li>
+        </a>
+        
+        <a href="https://www.whiscc.com/tags/Redis/">
+            <li class="aside__item--li tag">Redis</li>
+        </a>
+        
+    </ul>
+</div>
+
+            <!-- 回到顶部 -->
+            <a href="#top" target="_self" class="animated" id="back-to-top">
+                <img src="/images/top.png" alt="logo" id="back-to-top--icon">
+            </a>
+        </aside>
+        <!-- 移动端抽屉菜单 -->
+        <div id="slider">
+    <div>
+        <div id="slider-menu">
+            
+            <li id="menu">
+                <a href="/" class="menu-item">主页</a>
+            </li>
+            
+            <li id="menu">
+                <a href="/archives" class="menu-item">归档</a>
+            </li>
+            
+            <li id="menu">
+                <a href="/about" class="menu-item">关于我</a>
+            </li>
+            
+        </div>
+        <div id="slider-aside">
+            <!-- 关注 -->
+<div class="aside__item">
+    <div class="aside__item--title">关注</div>
+    <ul>
+        
+        <a href="https://github.com/CareyWang" target="_blank">
+            <li class="aside__item--li">GitHub</li>
+        </a>
+        
+    </ul>
+</div>
+
+<!-- 分类 -->
+<div class="aside__item">
+    <div class="aside__item--title">分类</div>
+    <ul>
+        
+    </ul>
+</div>
+
+<!-- 标签 -->
+<div class="aside__item">
+    <div class="aside__item--title">标签</div>
+    <ul class="aside-tag">
+        
+        <a href="https://www.whiscc.com/tags/php/">
+            <li class="aside__item--li tag">php</li>
+        </a>
+        
+        <a href="https://www.whiscc.com/tags/MySQL/">
+            <li class="aside__item--li tag">MySQL</li>
+        </a>
+        
+        <a href="https://www.whiscc.com/tags/Redis/">
+            <li class="aside__item--li tag">Redis</li>
+        </a>
+        
+    </ul>
+</div>
+        </div>
+    </div>
+</div>
+    </div>
+
+    <!-- 引入页脚 -->
+    <footer id="footer">
+        <p class="footer-info">
+    <a href="http://www.beian.miit.gov.cn/" target="_blank">沪ICP备19029040号-2</a>
+    © 2019 <a href="https://github.com/CareyWang" class="footer-link" target="_blank">CareyWang</a>
+
+    <br>
+    Theme <a href="https://github.com/junbin123/hexo-theme-binbin" class="footer-link" target="_blank">Binbin</a> |
+    Powered by <a href="https://hexo.io/zh-cn/" class="footer-link" target="_blank">Hexo</a>
+</p>
+    </footer>
+
+
+    <!-- 引入jquery -->
+    <script src="/js/jquery-3.4.1.min.js"></script>
+    <!-- 引入js文件 -->
+    <script src="/js/main.js"></script>
+    <!-- 引入代码高亮的 js -->
+    <script src="/js/highlight/highlight.pack.js"></script>
+    <script>hljs.initHighlightingOnLoad();</script>
+</body>
+
+</html>
